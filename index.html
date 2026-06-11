@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>Kakao Share</title>
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js"></script>
+</head>
+<body>
+    <script>
+        // 1. SDK 초기화 (카카오 디벨로퍼스에서 발급받은 JavaScript 키 입력)
+        Kakao.init('b8650fa94e9f3a155c0c164546eab991'); 
+
+        // Unity 웹뷰에서 호출할 메인 함수
+        async function shareFromUnity(base64Image, shareText) {
+            try {
+                // 2. Unity에서 넘겨받은 Base64 이미지를 File 객체로 변환
+                const file = dataURLtoFile(base64Image, 'share_image.png');
+
+                // 3. 카카오 서버로 이미지 업로드
+                const uploadRes = await Kakao.Share.uploadImage({
+                    file: [file]
+                });
+                
+                // 업로드된 이미지의 카카오 CDN URL
+                const imageUrl = uploadRes.infos[0].url;
+
+                // 4. 카카오톡 공유 실행
+                Kakao.Share.sendDefault({
+                    installTalk: false, // 카카오 SDK가 맘대로 스토어로 이동시키는 것 방지 (중요!)
+                    objectType: 'feed',
+                    content: {
+                        title: shareText,
+                        imageUrl: imageUrl,
+                        link: {
+                            // 공유된 메시지를 눌렀을 때 이동할 주소 (일단 Github 페이지로 통일)
+                            mobileWebUrl: 'https://[내아이디].github.io/[레포지토리명]',
+                            webUrl: 'https://[내아이디].github.io/[레포지토리명]',
+                        },
+                    }
+                });
+            } catch (error) {
+                // 이미지 업로드 실패 등 카카오 API 에러 발생 시 Unity로 전달
+                console.error(error);
+                sendErrorToUnity('OTHER_ERROR');
+            }
+        }
+
+        // Base64 문자열을 JS File 객체로 변환하는 유틸리티 함수
+        function dataURLtoFile(dataurl, filename) {
+            let arr = dataurl.split(','),
+                mime = arr[0].match(/:(.*?);/)[1],
+                bstr = atob(arr[1]), 
+                n = bstr.length, 
+                u8arr = new Uint8Array(n);
+                
+            while(n--){
+                u8arr[n] = bstr.charCodeAt(n);
+            }
+            return new File([u8arr], filename, {type: mime});
+        }
+
+        // Unity로 에러 코드를 전달하는 함수
+        function sendErrorToUnity(errorCode) {
+            // UniWebView 등 웹뷰 플러그인이 인식할 수 있는 커스텀 URL 스킴 호출
+            window.location.href = "unitywebview://error?code=" + errorCode;
+        }
+    </script>
+</body>
+</html>
