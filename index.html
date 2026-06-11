@@ -13,8 +13,8 @@
         // Unity 웹뷰에서 호출할 메인 함수
         async function shareFromUnity(base64Image, shareText) {
             try {
-                // 2. Unity에서 넘겨받은 Base64 이미지를 File 객체로 변환
-                const file = dataURLtoFile(base64Image, 'share_image.png');
+                // 2. Unity에서 넘겨받은 Base64 이미지를 File 객체로 변환 (수정된 함수 적용)
+                const file = base64ToFile(base64Image, 'share_image.png');
 
                 // 3. 카카오 서버로 이미지 업로드
                 const uploadRes = await Kakao.Share.uploadImage({
@@ -45,17 +45,28 @@
             }
         }
 
-        // Base64 문자열을 JS File 객체로 변환하는 유틸리티 함수
-        function dataURLtoFile(dataurl, filename) {
-            let arr = dataurl.split(','),
-                mime = arr[0].match(/:(.*?);/)[1],
-                bstr = atob(arr[1]), 
-                n = bstr.length, 
-                u8arr = new Uint8Array(n);
-                
+        // Base64 문자열을 JS File 객체로 변환하는 유틸리티 함수 (순수 Base64 대응 완료)
+        function base64ToFile(base64String, filename) {
+            let bstr = '';
+            let mime = 'image/png'; // 기본 포맷 (필요시 jpeg 등으로 변경)
+
+            // 유니티에서 넘어온 문자열에 'data:image...' 접두사가 있는지 확인
+            if (base64String.startsWith('data:')) {
+                let arr = base64String.split(',');
+                mime = arr[0].match(/:(.*?);/)[1];
+                bstr = atob(arr[1]);
+            } else {
+                // 접두사가 없는 순수 Base64 문자열인 경우
+                bstr = atob(base64String);
+            }
+
+            let n = bstr.length;
+            let u8arr = new Uint8Array(n);
+            
             while(n--){
                 u8arr[n] = bstr.charCodeAt(n);
             }
+            
             return new File([u8arr], filename, {type: mime});
         }
 
