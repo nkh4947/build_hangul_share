@@ -16,14 +16,18 @@
                     file: [file]
                 });
                 
-                // ⭐ 카카오 SDK 응답 형태가 어찌되든 무조건 URL을 뽑아내는 방탄 로직
+                // ⭐ 카카오 SDK 응답 형태 파싱 (진짜 최종)
                 let imageUrl = '';
-                if (uploadRes && uploadRes.infos && uploadRes.infos.length > 0) {
+                if (uploadRes && uploadRes.infos && uploadRes.infos.original && uploadRes.infos.original.url) {
+                    // 방금 로그에 찍힌 실제 카카오 최신 규격 (infos.original.url)
+                    imageUrl = uploadRes.infos.original.url;
+                } else if (uploadRes && uploadRes.infos && uploadRes.infos.length > 0) {
+                    // 혹시 모를 배열 형태 대비
                     imageUrl = uploadRes.infos[0].url;
                 } else if (Array.isArray(uploadRes) && uploadRes.length > 0) {
-                    imageUrl = uploadRes[0].url; // 배열로 바로 올 경우
+                    imageUrl = uploadRes[0].url;
                 } else if (uploadRes && uploadRes.url) {
-                    imageUrl = uploadRes.url; // 단일 객체일 경우
+                    imageUrl = uploadRes.url;
                 } else {
                     throw new Error("카카오 응답에서 이미지 URL을 찾을 수 없음: " + JSON.stringify(uploadRes));
                 }
