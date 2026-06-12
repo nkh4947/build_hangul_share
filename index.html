@@ -7,76 +7,67 @@
 </head>
 <body>
     <script>
+        // 본인 카카오 앱 키 적용 완료
         Kakao.init('b8650fa94e9f3a155c0c164546eab991'); 
 
-        async function shareFromUnity(base64Image, shareText) {
+        // [Step 1] 유니티에서 호출: 이미지만 업로드하고 URL을 유니티로 반환
+        async function uploadKakaoImage(base64Image) {
             try {
                 const file = base64ToFile(base64Image, 'share_image.jpg');
-                const uploadRes = await Kakao.Share.uploadImage({
-                    file: [file]
-                });
+                const uploadRes = await Kakao.Share.uploadImage({ file: [file] });
                 
-                // ⭐ 카카오 SDK 응답 형태 파싱 (진짜 최종)
                 let imageUrl = '';
                 if (uploadRes && uploadRes.infos && uploadRes.infos.original && uploadRes.infos.original.url) {
-                    // 방금 로그에 찍힌 실제 카카오 최신 규격 (infos.original.url)
                     imageUrl = uploadRes.infos.original.url;
                 } else if (uploadRes && uploadRes.infos && uploadRes.infos.length > 0) {
-                    // 혹시 모를 배열 형태 대비
                     imageUrl = uploadRes.infos[0].url;
                 } else if (Array.isArray(uploadRes) && uploadRes.length > 0) {
                     imageUrl = uploadRes[0].url;
                 } else if (uploadRes && uploadRes.url) {
                     imageUrl = uploadRes.url;
                 } else {
-                    throw new Error("카카오 응답에서 이미지 URL을 찾을 수 없음: " + JSON.stringify(uploadRes));
+                    throw new Error("URL 찾기 실패: " + JSON.stringify(uploadRes));
                 }
 
-                // ⭐ [핵심 오타 수정] uniwebview:// 로 쏴야 유니티가 가로챔!
+                // 업로드 완료! 딥링크 실행 안 하고 오직 URL만 유니티로 먼저 쏨
                 window.location.href = "uniwebview://kakaoshare?url=" + encodeURIComponent(imageUrl);
-
-                Kakao.Share.sendDefault({
-                    objectType: 'feed',
-                    content: {
-                        title: shareText,
-                        imageUrl: imageUrl,
-                        link: {
-                            mobileWebUrl: 'https://[내아이디].github.io/[레포지토리명]',
-                            webUrl: 'https://[내아이디].github.io/[레포지토리명]',
-                        },
-                    },
-                    buttons: [
-                        {
-                            title: '앱에서 보기',
-                            link: {
-                                mobileWebUrl: 'https://[내아이디].github.io/[레포지토리명]',
-                                webUrl: 'https://[내아이디].github.io/[레포지토리명]',
-                                androidExecutionParams: 'from=kakao', 
-                                iosExecutionParams: 'from=kakao'
-                            }
-                        }
-                    ]
-                });
             } catch (error) {
-                // ⭐ 카카오가 던지는 에러 형태가 뭐든 간에 강제로 문자열로 풀어서 유니티로 보냄
-                let errorString = "알 수 없는 에러";
-                if (typeof error === 'object') {
-                    // 에러가 JSON 객체일 경우 (카카오 API 에러의 99%)
-                    errorString = JSON.stringify(error);
-                    // 간혹 error.message가 있는 표준 에러일 경우
-                    if (error.message) errorString = error.message; 
-                } else {
-                    errorString = String(error);
-                }
-                
-                window.location.href = "uniwebview://kakaoshare?error=" + encodeURIComponent(errorString);
+                // 에러 처리 코드 압축 (기존 여러 줄을 2줄로 줄임)
+                let errStr = typeof error === 'object' ? (error.message || JSON.stringify(error)) : String(error);
+                window.location.href = "uniwebview://kakaoshare?error=" + encodeURIComponent(errStr);
             }
         }
 
+        // [Step 2] 유니티에서 호출: 이미지 URL을 안전하게 받은 후 딥링크만 실행
+        function executeKakaoShare(imageUrl, shareText) {
+            Kakao.Share.sendDefault({
+                objectType: 'feed',
+                content: {
+                    title: shareText,
+                    imageUrl: imageUrl,
+                    link: {
+                        mobileWebUrl: 'https://[내아이디].github.io/[레포지토리명]',
+                        webUrl: 'https://[내아이디].github.io/[레포지토리명]',
+                    },
+                },
+                buttons: [
+                    {
+                        title: '앱에서 보기',
+                        link: {
+                            mobileWebUrl: 'https://[내아이디].github.io/[레포지토리명]',
+                            webUrl: 'https://[내아이디].github.io/[레포지토리명]',
+                            androidExecutionParams: 'from=kakao', 
+                            iosExecutionParams: 'from=kakao'
+                        }
+                    }
+                ]
+            });
+        }
+
+        // Base64 변환 유틸
         function base64ToFile(base64String, filename) {
             let bstr = '';
             let mime = 'image/jpeg'; 
-
             if (base64String.startsWith('data:')) {
                 let arr = base64String.split(',');
                 mime = arr[0].match(/:(.*?);/)[1];
@@ -84,12 +75,9 @@
             } else {
                 bstr = atob(base64String);
             }
-
             let n = bstr.length;
             let u8arr = new Uint8Array(n);
-            while(n--){
-                u8arr[n] = bstr.charCodeAt(n);
-            }
+            while(n--){ u8arr[n] = bstr.charCodeAt(n); }
             return new File([u8arr], filename, {type: mime});
         }
     </script>
