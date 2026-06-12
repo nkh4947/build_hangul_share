@@ -7,13 +7,13 @@
 </head>
 <body>
     <script>
-        // 1. SDK 초기화 (카카오 디벨로퍼스에서 발급받은 JavaScript 키 입력)
+        // 1. SDK 초기화 (본인의 JavaScript 키 입력)
         Kakao.init('b8650fa94e9f3a155c0c164546eab991'); 
 
-        // Unity 웹뷰에서 호출할 메인 함수
+        // Unity 웹뷰에서 호출할 메인 비동기 함수
         async function shareFromUnity(base64Image, shareText) {
             try {
-                // 2. Unity에서 넘겨받은 Base64 이미지를 File 객체로 변환
+                // 2. Base64 이미지를 파일 객체로 변환 (C# JPG 압축에 맞춰 jpeg로 설정)
                 const file = base64ToFile(base64Image, 'share_image.jpg');
 
                 // 3. 카카오 서버로 이미지 업로드
@@ -21,8 +21,11 @@
                     file: [file]
                 });
                 
-                // 업로드된 이미지의 카카오 CDN URL
+                // 업로드된 이미지의 실제 카카오 CDN URL
                 const imageUrl = uploadRes.infos[0].url;
+
+                // ⭐ [핵심] 업로드 성공 즉시 유니티 콘솔로 CDN URL을 전송
+                window.location.href = "unitywebview://kakaoshare?url=" + encodeURIComponent(imageUrl);
 
                 // 4. 카카오톡 공유 실행
                 Kakao.Share.sendDefault({
@@ -31,21 +34,16 @@
                         title: shareText,
                         imageUrl: imageUrl,
                         link: {
-                            // 이미지나 텍스트를 클릭했을 때 기본으로 열릴 웹페이지
                             mobileWebUrl: 'https://[내아이디].github.io/[레포지토리명]',
                             webUrl: 'https://[내아이디].github.io/[레포지토리명]',
                         },
                     },
-                    // 하단 버튼 리스트
                     buttons: [
                         {
                             title: '앱에서 보기',
                             link: {
-                                // PC나 앱 미설치 환경을 대비한 기본 웹 링크
                                 mobileWebUrl: 'https://[내아이디].github.io/[레포지토리명]',
                                 webUrl: 'https://[내아이디].github.io/[레포지토리명]',
-                                
-                                // 앱이 설치되어 있을 경우 OS별로 앱을 실행하게 만드는 파라미터
                                 androidExecutionParams: 'from=kakao', 
                                 iosExecutionParams: 'from=kakao'
                             }
@@ -53,41 +51,31 @@
                     ]
                 });
             } catch (error) {
-                // 이미지 업로드 실패 등 카카오 API 에러 발생 시 Unity로 전달
                 console.error(error);
-                sendErrorToUnity('OTHER_ERROR');
+                // 에러 발생 시 유니티로 에러 알림
+                window.location.href = "unitywebview://kakaoshare?error=" + encodeURIComponent(error.message);
             }
         }
 
-        // Base64 문자열을 JS File 객체로 변환하는 유틸리티 함수
+        // Base64 변환 유틸리티
         function base64ToFile(base64String, filename) {
             let bstr = '';
-            let mime = 'image/jpeg'; // C#에서 EncodeToJPG로 넘기므로 jpeg로 설정
+            let mime = 'image/jpeg'; 
 
-            // 유니티에서 넘어온 문자열에 'data:image...' 접두사가 있는지 확인
             if (base64String.startsWith('data:')) {
                 let arr = base64String.split(',');
                 mime = arr[0].match(/:(.*?);/)[1];
                 bstr = atob(arr[1]);
             } else {
-                // 접두사가 없는 순수 Base64 문자열인 경우
                 bstr = atob(base64String);
             }
 
             let n = bstr.length;
             let u8arr = new Uint8Array(n);
-            
             while(n--){
                 u8arr[n] = bstr.charCodeAt(n);
             }
-            
             return new File([u8arr], filename, {type: mime});
-        }
-
-        // Unity로 에러 코드를 전달하는 함수
-        function sendErrorToUnity(errorCode) {
-            // UniWebView 등 웹뷰 플러그인이 인식할 수 있는 커스텀 URL 스킴 호출
-            window.location.href = "unitywebview://error?code=" + errorCode;
         }
     </script>
 </body>
