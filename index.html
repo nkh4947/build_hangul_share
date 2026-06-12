@@ -7,7 +7,7 @@
 </head>
 <body>
     <script>
-        Kakao.init('JS_KEY'); 
+        Kakao.init('b8650fa94e9f3a155c0c164546eab991'); 
 
         async function shareFromUnity(base64Image, shareText) {
             try {
@@ -54,8 +54,18 @@
                     ]
                 });
             } catch (error) {
-                // 에러 발생 시에도 올바른 uniwebview 스킴으로 유니티에 보고
-                window.location.href = "uniwebview://kakaoshare?error=" + encodeURIComponent(error.message);
+                // ⭐ 카카오가 던지는 에러 형태가 뭐든 간에 강제로 문자열로 풀어서 유니티로 보냄
+                let errorString = "알 수 없는 에러";
+                if (typeof error === 'object') {
+                    // 에러가 JSON 객체일 경우 (카카오 API 에러의 99%)
+                    errorString = JSON.stringify(error);
+                    // 간혹 error.message가 있는 표준 에러일 경우
+                    if (error.message) errorString = error.message; 
+                } else {
+                    errorString = String(error);
+                }
+                
+                window.location.href = "uniwebview://kakaoshare?error=" + encodeURIComponent(errorString);
             }
         }
 
