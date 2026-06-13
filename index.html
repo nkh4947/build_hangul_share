@@ -40,32 +40,38 @@
 
         // [Step 2] 유니티에서 호출: 이미지 URL을 안전하게 받은 후 딥링크만 실행
         function executeKakaoShare(imageUrl, shareText) {
-            Kakao.Share.sendDefault({
-                objectType: 'feed',
-                content: {
-                    title: shareText,
-                    imageUrl: imageUrl,
-                    imageWidth: 540,  // 가로 (1080 넣어도 됨)
-                    imageHeight: 675, // 세로 (1350 넣어도 됨)
-                    link: {
-                        mobileWebUrl: 'https://buildhangul.app/',
-                        webUrl: 'https://buildhangul.app/',
-                        androidExecutionParams: 'from=kakao', 
-                        iosExecutionParams: 'from=kakao'
-                    },
-                },
-                buttons: [
-                    {
-                        title: '앱에서 보기',
+            try {
+                Kakao.Share.sendDefault({
+                    objectType: 'feed',
+                    content: {
+                        title: shareText,
+                        imageUrl: imageUrl,
+                        imageWidth: 540,  // 세로 잘림 방지 (안전한 공식 필드)
+                        imageHeight: 675,
                         link: {
                             mobileWebUrl: 'https://buildhangul.app/',
                             webUrl: 'https://buildhangul.app/',
                             androidExecutionParams: 'from=kakao', 
                             iosExecutionParams: 'from=kakao'
+                        },
+                    },
+                    buttons: [
+                        {
+                            title: '앱에서 보기',
+                            link: {
+                                mobileWebUrl: 'https://buildhangul.app/',
+                                webUrl: 'https://buildhangul.app/',
+                                androidExecutionParams: 'from=kakao', 
+                                iosExecutionParams: 'from=kakao'
+                            }
                         }
-                    }
-                ]
-            });
+                    ]
+                });
+            } catch (error) {
+                // ⭐ SDK 내부에서 에러가 터지면 즉시 낚아채서 유니티로 에러 메시지 전송
+                let errStr = typeof error === 'object' ? (error.message || JSON.stringify(error)) : String(error);
+                window.location.href = "uniwebview://kakaoshare?error=" + encodeURIComponent(errStr);
+            }
         }
 
         // Base64 변환 유틸
